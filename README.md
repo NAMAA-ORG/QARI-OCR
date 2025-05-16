@@ -1,6 +1,6 @@
 # QARI-OCR
 
-This repository contains code for training and evaluating an Arabic OCR model based on vision-language architecture designed for Arabic text extraction and understanding.
+This repository contains code for training and evaluating QARI OCR model based on vision-language architecture designed for Arabic text extraction and understanding.
 
 ## Overview
 
