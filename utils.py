@@ -3,8 +3,13 @@ import re
 import evaluate
 from PIL import Image
 import requests
+import torch
 from io import BytesIO
-from qwen_vl_utils import process_vision_info
+from vision_utils import process_vision_info
+
+# Initialize metrics
+cer_metric = evaluate.load("cer")
+wer_metric = evaluate.load("wer")_utils import process_vision_info
 
 # Initialize metrics
 cer_metric = evaluate.load("cer")
