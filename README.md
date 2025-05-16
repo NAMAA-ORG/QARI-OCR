@@ -68,26 +68,56 @@ The training code is provided in a Jupyter notebook format (`train.ipynb`). The 
 ## Usage
 
 ```python
-from transformers import AutoModelForCausalLM, AutoProcessor
-from utils import vlm_output
 from PIL import Image
+from transformers import Qwen2VLForConditionalGeneration, AutoProcessor
+import torch
+import os
+from qwen_vl_utils import process_vision_info
 
-# Load model and processor
-model_path = "models/ocr_model"
-model = AutoModelForCausalLM.from_pretrained(
-    model_path,
-    torch_dtype="auto",
-    device_map="auto"
+
+
+model_name = "MODEL"
+model = Qwen2VLForConditionalGeneration.from_pretrained(
+                model_name,
+                torch_dtype="auto",
+                device_map="auto"
+            )
+processor = AutoProcessor.from_pretrained(model_name)
+max_tokens = 2000
+
+prompt = "Below is the image of one page of a document, as well as some raw textual content that was previously extracted for it. Just return the plain text representation of this document as if you were reading it naturally. Do not hallucinate."
+image.save("image.png")
+
+messages = [
+    {
+        "role": "user",
+        "content": [
+            {"type": "image", "image": f"file://{src}"},
+            {"type": "text", "text": prompt},
+        ],
+    }
+]
+text = processor.apply_chat_template(
+    messages, tokenize=False, add_generation_prompt=True
 )
-processor = AutoProcessor.from_pretrained(model_path)
-
-# Load image
-image_path = "path/to/image.jpg"
-image = Image.open(image_path)
-
-# Extract text from image
-extracted_text = vlm_output(image, processor, model, max_tokens=2000)
-print(extracted_text)
+image_inputs, video_inputs = process_vision_info(messages)
+inputs = processor(
+    text=[text],
+    images=image_inputs,
+    videos=video_inputs,
+    padding=True,
+    return_tensors="pt",
+)
+inputs = inputs.to("cuda")
+generated_ids = model.generate(**inputs, max_new_tokens=max_tokens)
+generated_ids_trimmed = [
+    out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+]
+output_text = processor.batch_decode(
+    generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+)[0]
+os.remove(src)
+print(output_text)
 ```
 
 ## Metrics
