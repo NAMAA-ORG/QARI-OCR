@@ -68,56 +68,60 @@ The training code is provided in a Jupyter notebook format (`train.ipynb`). The 
 ## Usage
 
 ```python
-from PIL import Image
 from transformers import Qwen2VLForConditionalGeneration, AutoProcessor
-import torch
-import os
+from peft import PeftModel
 from qwen_vl_utils import process_vision_info
 
 
 
-model_name = "MODEL"
-model = Qwen2VLForConditionalGeneration.from_pretrained(
-                model_name,
-                torch_dtype="auto",
-                device_map="auto"
-            )
-processor = AutoProcessor.from_pretrained(model_name)
-max_tokens = 2000
+BASE_MODEL = "Qwen/Qwen2-VL-2B-Instruct"
+ADAPTER_MODEL = "NAMAA-Space/Qari-OCR-0.2.2.1-VL-2B-Instruct" 
+
+base_model = Qwen2VLForConditionalGeneration.from_pretrained(
+      BASE_MODEL,
+      torch_dtype="auto",
+      device_map="auto"
+)
+
+model = PeftModel.from_pretrained(base_model, ADAPTER_MODEL)
+
+processor = AutoProcessor.from_pretrained(BASE_MODEL)
+
+IMAGE_PATH = "path/image.jpg"
 
 prompt = "Below is the image of one page of a document, as well as some raw textual content that was previously extracted for it. Just return the plain text representation of this document as if you were reading it naturally. Do not hallucinate."
-image.save("image.png")
+
+
+max_tokens = 2000
 
 messages = [
     {
         "role": "user",
         "content": [
-            {"type": "image", "image": f"file://{src}"},
+            {"type": "image", "image": f"file://{IMAGE_PATH}"},
             {"type": "text", "text": prompt},
         ],
     }
-]
-text = processor.apply_chat_template(
-    messages, tokenize=False, add_generation_prompt=True
-)
+  ]
+text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 image_inputs, video_inputs = process_vision_info(messages)
 inputs = processor(
-    text=[text],
-    images=image_inputs,
-    videos=video_inputs,
-    padding=True,
-    return_tensors="pt",
-)
-inputs = inputs.to("cuda")
+      text=[text],
+      images=image_inputs,
+      videos=video_inputs,
+      padding=True,
+      return_tensors="pt",
+).to("cuda")
+
 generated_ids = model.generate(**inputs, max_new_tokens=max_tokens)
 generated_ids_trimmed = [
-    out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+      out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
 ]
 output_text = processor.batch_decode(
-    generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+      generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
 )[0]
-os.remove(src)
-print(output_text)
+
+print("OCR Output:\n", output_text)
 ```
 
 ## Metrics
